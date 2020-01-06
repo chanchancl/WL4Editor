@@ -1,22 +1,34 @@
 #include "EntitySet.h"
 
-constexpr int LevelComponents::EntitySet::EntitiesFirstActionFrameSetsPtrsData[129];
+constexpr unsigned int LevelComponents::EntitySet::EntitiesFirstActionFrameSetsPtrsData[129];
+constexpr int LevelComponents::EntitySet::EntityPositinalOffset[258];
 
 namespace LevelComponents
 {
     /// <summary>
     /// sub function used in EntitySet constructor for loading sub palettes for each Entity.
     /// </summary>
+    /// <param name="startPaletteId">
+    /// Id of the palette where start to reset.
+    /// </param>
+    /// <param name="paletteNum">
+    /// Amount of palettes that will be reset.
+    /// </param>
+    /// <param name="paletteSetPtr">
+    /// Palette data address in ROM.
+    /// </param>
     void EntitySet::LoadSubPalettes(int startPaletteId, int paletteNum, int paletteSetPtr)
     {
-        for(int i = 0; i < paletteNum; ++i)
+        for (int i = 0; i < paletteNum; ++i)
         {
+            if (palettes[i + startPaletteId].size())
+                palettes[i + startPaletteId].clear();
             // First color is transparent
             palettes[i + startPaletteId].push_back(0);
             int subPalettePtr = paletteSetPtr + i * 32;
-            for(int j = 1; j < 16; ++j)
+            for (int j = 1; j < 16; ++j)
             {
-                unsigned short color555 = *(unsigned short*) (ROMUtils::CurrentFile + subPalettePtr + j * 2);
+                unsigned short color555 = *(unsigned short *) (ROMUtils::CurrentFile + subPalettePtr + j * 2);
                 int r = ((color555 << 3) & 0xF8) | ((color555 >> 2) & 3);
                 int g = ((color555 >> 2) & 0xF8) | ((color555 >> 7) & 3);
                 int b = ((color555 >> 7) & 0xF8) | ((color555 >> 13) & 3);
@@ -29,9 +41,18 @@ namespace LevelComponents
     /// <summary>
     /// sub function used in EntitySet constructor for loading Tile8x8s for each Entity.
     /// </summary>
+    /// <param name="tileaddress">
+    /// Address of Entity tiles in ROM.
+    /// </param>
+    /// <param name="datalength">
+    /// Length of Tiles' data.
+    /// </param>
+    /// <param name="startrow">
+    /// The row number to load new Entity Tiles.
+    /// </param>
     void EntitySet::LoadSpritesTiles(int tileaddress, int datalength, int startrow)
     {
-        for(int i = 0; i < (datalength / 32); ++i)
+        for (int i = 0; i < (datalength / 32); ++i)
         {
             tile8x8data[i + startrow * 32] = new Tile8x8(tileaddress + i * 32, palettes);
         }
@@ -60,11 +81,14 @@ namespace LevelComponents
         do // Load palette 8 - 14 if exist for entities
         {
             tmpEntityId = (int) ROMUtils::CurrentFile[entitysetptr + 2 * k];
-            if((tmpEntityId > 0x10))
+            if ((tmpEntityId > 0x10))
             {
-                palettePtr = ROMUtils::PointerFromData(WL4Constants::EntityPalettePointerTable + 4 * (tmpEntityId - 0x10));
-                EntityPaletteNum = ROMUtils::IntFromData(WL4Constants::EntityTilesetLengthTable + 4 * (tmpEntityId - 0x10)) / (32 * 32 * 2);
-                if(lastpalettePtr != palettePtr)
+                palettePtr =
+                    ROMUtils::PointerFromData(WL4Constants::EntityPalettePointerTable + 4 * (tmpEntityId - 0x10));
+                EntityPaletteNum =
+                    ROMUtils::IntFromData(WL4Constants::EntityTilesetLengthTable + 4 * (tmpEntityId - 0x10)) /
+                    (32 * 32 * 2);
+                if (lastpalettePtr != palettePtr)
                 {
                     LoadSubPalettes(8 + currentpaletteID, EntityPaletteNum, palettePtr);
                     currentpaletteID += EntityPaletteNum;
@@ -72,43 +96,42 @@ namespace LevelComponents
                 lastpalettePtr = palettePtr;
             }
             k++;
-        } while((tmpEntityId != 0) && (currentpaletteID != 7));
+        } while ((tmpEntityId != 0) && (currentpaletteID != 8));
         // Set palette before and not include 15 to be 0 if not exist
-        if(currentpaletteID < 7)
+        if (currentpaletteID < 7)
         {
-            for(int i = (8 + currentpaletteID); i < 15; ++i)
+            for (int i = (8 + currentpaletteID); i < 15; ++i)
             {
-                for(int j = 0; j < 16; ++j)
+                for (int j = 0; j < 16; ++j)
                 {
                     palettes[i].push_back(0);
                 }
             }
         }
         // Load palette 3 - 7 for Basic Element used in the room
-        LoadSubPalettes(3, 5, basicElementPalettePtr);
-        // Load palette 15 for treasure boxes
-        LoadSubPalettes(15, 1, ROMUtils::PointerFromData(WL4Constants::EntityPalettePointerTable));
+        LoadSubPalettes(3, 1, basicElementPalettePtr);
+        LoadSubPalettes(4, 4, WL4Constants::UniversalSpritesPalette2);
+        // Load palette 15 for treasure boxes if necessary
+        if (currentpaletteID <= 7)
+            LoadSubPalettes(15, 1, ROMUtils::PointerFromData(WL4Constants::EntityPalettePointerTable));
         // Set palette 0 - 2 all to 0 for Wario Sprites only
-        for(int i = 0; i < 2; ++i)
+        for (int i = 0; i < 3; ++i)
         {
-            for(int j = 0; j < 16; ++j)
+            for (int j = 0; j < 16; ++j)
             {
                 palettes[i].push_back(0);
             }
         }
 
         // Load 1024 sprites tiles, ignore the first 4 rows, they are wario tiles
-        BlankTile = Tile8x8::CreateBlankTile(palettes);
-        // Initialize all the tiles
-        for(int i = 0; i < (34 * 32); ++i) //TODO: Can we use memset here ?
-        {
-            tile8x8data[i] = BlankTile;
-        }
+        memset(tile8x8data, 0, sizeof(tile8x8data));
+
         // Load Basic Universal Entities' tile8x8s.
         int tiledataptr, tiledatalength;
         tiledataptr = WL4Constants::SpritesBasicElementTiles;
         tiledatalength = 0x3000;
         LoadSpritesTiles(tiledataptr, tiledatalength, 4);
+
         // Load Entities' tile8x8s which differ amongst all entitysets
         k = 0;
         int currentrow = 16;
@@ -116,30 +139,38 @@ namespace LevelComponents
         do
         {
             tmpEntityId = (int) ROMUtils::CurrentFile[entitysetptr + 2 * k];
-            if(tmpEntityId == 0) break;
+            if (tmpEntityId == 0)
+                break;
             EntitySetinfoTableElement Tmp_entitytableElement;
             Tmp_entitytableElement.Global_EntityID = tmpEntityId;
             Tmp_entitytableElement.paletteOffset = (int) ROMUtils::CurrentFile[entitysetptr + 2 * k + 1];
             EntityinfoTable.push_back(Tmp_entitytableElement);
             tiledataptr = ROMUtils::PointerFromData(WL4Constants::EntityTilesetPointerTable + 4 * (tmpEntityId - 0x10));
             tiledatalength = ROMUtils::IntFromData(WL4Constants::EntityTilesetLengthTable + 4 * (tmpEntityId - 0x10));
-            if(tiledataptr != lasttiledataptr)
+            if (tiledataptr != lasttiledataptr)
             {
                 LoadSpritesTiles(tiledataptr, tiledatalength, currentrow);
                 currentrow += tiledatalength / (32 * 32);
             }
             k++;
             lasttiledataptr = tiledataptr;
-        } while(1);
-        // Load Treasure/CD Boxes tile8x8s when this Entityset is not a Boss Entityset
-        if(!IncludeBossTiles())
+        } while (1);
+        for (unsigned int i = 0; i < sizeof(tile8x8data) / sizeof(tile8x8data[0]); ++i)
         {
-            tiledataptr = ROMUtils::PointerFromData(WL4Constants::EntityTilesetPointerTable);
-            tiledatalength = ROMUtils::IntFromData(WL4Constants::EntityTilesetLengthTable);
-            LoadSpritesTiles(tiledataptr, tiledatalength, 30);
+            if (!tile8x8data[i])
+                tile8x8data[i] = Tile8x8::CreateBlankTile(palettes);
         }
 
-        // TODOs: set other entity informations
+        // Load Treasure/CD Boxes tile8x8s when this Entityset is not a Boss Entityset
+        if ((!IncludeBossTiles()) && (currentrow < 31))
+        {
+            //            tiledataptr = ROMUtils::PointerFromData(WL4Constants::EntityTilesetPointerTable);
+            //            tiledatalength = ROMUtils::IntFromData(WL4Constants::EntityTilesetLengthTable);
+            //            LoadSpritesTiles(tiledataptr, tiledatalength, 30);
+            LoadSpritesTiles(WL4Constants::TreasureBoxGFXTiles, 2048, 30);
+        }
+
+        // TODO: set other entity information
     }
 
     /// <summary>
@@ -148,15 +179,34 @@ namespace LevelComponents
     /// <param name="_entityID">
     /// Entity local id.
     /// </param>
-    int EntitySet::GetEntityPaletteOffset(int _entityID)
+    /// <param name="entityglobalId">
+    /// Entity global id.
+    /// </param>
+    int EntitySet::GetEntityPaletteOffset(int _entityID, int entityglobalId)
     {
-        if(_entityID == -1)// TODO: find what the game does
+        if (_entityID == -1) // TODO: find what the game does
         {
             return 0;
         }
         else
         {
-            return EntityinfoTable[_entityID].paletteOffset + 8;
+            int Paloffset = EntityinfoTable[_entityID].paletteOffset + 8;
+
+            // these Entities have an extra relative palette offset
+            if ((entityglobalId == 0x12) || (entityglobalId == 0x1D) || (entityglobalId == 0x2B) ||
+                (entityglobalId == 0x30) || (entityglobalId == 0x31) || (entityglobalId == 0x32) ||
+                (entityglobalId == 0x33) || (entityglobalId == 0x34) || (entityglobalId == 0x35) ||
+                (entityglobalId == 0x36) || (entityglobalId == 0x37) || (entityglobalId == 0x38) ||
+                (entityglobalId == 0x39))
+            {
+                Paloffset++;
+            }
+            if (entityglobalId == 0x13)
+            {
+                Paloffset += 2;
+            }
+
+            return Paloffset;
         }
     }
 
@@ -168,7 +218,7 @@ namespace LevelComponents
     /// </param>
     int EntitySet::GetEntityTileIdOffset(int _entityID)
     {
-        if(_entityID == -1)// TODO: find what the game does
+        if (_entityID == -1) // TODO: find what the game does
         {
             return 0;
         }
@@ -186,9 +236,11 @@ namespace LevelComponents
     /// </param>
     bool EntitySet::IsEntityInside(int entityglobalId)
     {
-        for(unsigned int i = 0; i < EntityinfoTable.size(); ++i)
+        if (entityglobalId >= 0 && entityglobalId <= 0x10)
+            return true;
+        for (unsigned int i = 0; i < EntityinfoTable.size(); ++i)
         {
-            if(EntityinfoTable[i].Global_EntityID == entityglobalId)
+            if (EntityinfoTable[i].Global_EntityID == entityglobalId)
             {
                 return true;
             }
@@ -201,13 +253,18 @@ namespace LevelComponents
     /// </summary>
     bool EntitySet::IncludeBossTiles()
     {
-        return
-            IsEntityInside(0x12) ||
-            IsEntityInside(0x2C) ||
-            IsEntityInside(0x51) ||
-            IsEntityInside(0x69) ||
-            IsEntityInside(0x76) ||
-            IsEntityInside(0x7D);
+        return IsEntityInside(0x18) || IsEntityInside(0x2C) || IsEntityInside(0x51) || IsEntityInside(0x69) ||
+               IsEntityInside(0x76) || IsEntityInside(0x7D);
+    }
+
+    /// <summary>
+    /// Get a copy of EntitySetinfoTableElement from this EntitySet.
+    /// </summary>
+    std::vector<EntitySetinfoTableElement> EntitySet::GetEntityTable()
+    {
+        std::vector<EntitySetinfoTableElement> newtable;
+        newtable.assign(EntityinfoTable.begin(), EntityinfoTable.end());
+        return newtable;
     }
 
     /// <summary>
@@ -219,20 +276,20 @@ namespace LevelComponents
     EntitySetAndEntitylocalId EntitySet::EntitySetFromEntityID(int entityglobalId)
     {
         struct EntitySetAndEntitylocalId tmpEntitySetAndEntitylocalId;
-        if(entityglobalId < 0x11)
+        if (entityglobalId < 0x11)
         {
             tmpEntitySetAndEntitylocalId.entitysetId = 1;
             tmpEntitySetAndEntitylocalId.entitylocalId = -1;
             return tmpEntitySetAndEntitylocalId;
         }
-        for(int j = 1; j < 90; ++j)
+        for (int j = 1; j < 90; ++j)
         {
             int entitysetptr = ROMUtils::PointerFromData(WL4Constants::EntitySetInfoPointerTable + 4 * j);
             int i = 0;
-            while(ROMUtils::CurrentFile[entitysetptr + 2 * i] != (unsigned char)0)
+            while (ROMUtils::CurrentFile[entitysetptr + 2 * i] != (unsigned char) 0)
             {
                 unsigned char *entityidtmp = ROMUtils::CurrentFile + entitysetptr + 2 * i;
-                if(*entityidtmp == (unsigned char)entityglobalId)
+                if (*entityidtmp == (unsigned char) entityglobalId)
                 {
                     tmpEntitySetAndEntitylocalId.entitysetId = j;
                     tmpEntitySetAndEntitylocalId.entitylocalId = i;
@@ -242,11 +299,11 @@ namespace LevelComponents
             }
         }
         memset(&tmpEntitySetAndEntitylocalId, 0, sizeof(tmpEntitySetAndEntitylocalId));
-        return tmpEntitySetAndEntitylocalId; //TODO: Error handling
+        return tmpEntitySetAndEntitylocalId; // TODO: Error handling
     }
 
     /// <summary>
-    /// Get the first action set of a choosed entity with its global id.
+    /// Get the first action set of a choosed entity by its global id.
     /// </summary>
     /// <param name="entityglobalId">
     /// Entity global id.
@@ -257,19 +314,53 @@ namespace LevelComponents
     }
 
     /// <summary>
+    /// Get Entity Positional offset by its global id.
+    /// </summary>
+    /// <param name="entityglobalId">
+    /// Entity global id.
+    /// </param>
+    EntityPositionalOffset EntitySet::GetEntityPositionalOffset(int entityglobalId)
+    {
+        EntityPositionalOffset tmpEntityPositionalOffset;
+        tmpEntityPositionalOffset.XOffset = EntityPositinalOffset[2 * entityglobalId];
+        tmpEntityPositionalOffset.YOffset = EntityPositinalOffset[2 * entityglobalId + 1];
+        return tmpEntityPositionalOffset;
+    }
+
+    /// <summary>
+    /// Use one of the palette to render the whole Entityset for testing.
+    /// </summary>
+    /// <param name="paletteId">
+    /// palette id.
+    /// </param>
+    /// <returns>
+    /// the EntitySet rendered a pixmap.
+    /// </returns>
+    QPixmap EntitySet::GetPixmap(int paletteId)
+    {
+        QPixmap pixmap(8 * 32, 8 * 32);
+        pixmap.fill(Qt::transparent);
+        for (int L = 0; L < 32; ++L)
+        {
+            for (int num = 0; num < 32; ++num)
+            {
+                tile8x8data[num + 32 * L]->SetPaletteIndex(paletteId);
+                tile8x8data[num + 32 * L]->DrawTile(&pixmap, num * 8, L * 8);
+            }
+        }
+        return pixmap;
+    }
+
+    /// <summary>
     /// Deconstruct an instance of EntitySet.
     /// </summary>
     EntitySet::~EntitySet()
     {
         // Delete Tile8x8 information
         // BlankTile may be disjoint in the array, so we skip over those and delete it afterward
-        for(unsigned int i = 0; i < sizeof(tile8x8data) / sizeof(tile8x8data[0]); ++i)
+        for (unsigned int i = 0; i < sizeof(tile8x8data) / sizeof(tile8x8data[0]); ++i)
         {
-            if(tile8x8data[i] != BlankTile)
-            {
-                delete tile8x8data[i];
-            }
+            delete tile8x8data[i];
         }
-        delete BlankTile;
     }
-}
+} // namespace LevelComponents

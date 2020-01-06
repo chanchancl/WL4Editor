@@ -6,19 +6,19 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>960</width>
-    <height>720</height>
+    <width>1060</width>
+    <height>779</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Door Config</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_3">
    <item row="6" column="1" rowspan="3">
     <widget class="QGroupBox" name="GroupBox_Preview">
      <property name="maximumSize">
       <size>
-       <width>470</width>
+       <width>560</width>
        <height>16777215</height>
       </size>
      </property>
@@ -47,25 +47,32 @@
      <property name="title">
       <string>EntitySet</string>
      </property>
-     <layout class="QVBoxLayout" name="verticalLayout_6">
-      <item>
-       <widget class="QLabel" name="Label_EntitySetID">
-        <property name="text">
-         <string>EntitySet ID:</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="ComboBox_EntityID"/>
-      </item>
-      <item>
+     <layout class="QGridLayout" name="gridLayout_4">
+      <item row="2" column="0">
        <widget class="QLabel" name="Label_EntityFilter">
         <property name="text">
          <string>Entity Filter:</string>
         </property>
        </widget>
       </item>
-      <item>
+      <item row="2" column="1">
+       <widget class="QPushButton" name="pushButton_DeselectAll">
+        <property name="text">
+         <string>Deselect all Entities</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0" colspan="2">
+       <widget class="QLabel" name="Label_EntitySetID">
+        <property name="text">
+         <string>EntitySet ID:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <widget class="QComboBox" name="ComboBox_EntitySetID"/>
+      </item>
+      <item row="3" column="0" colspan="2">
        <widget class="QTableView" name="TableView_EntityFilter">
         <property name="minimumSize">
          <size>
@@ -75,7 +82,7 @@
         </property>
        </widget>
       </item>
-      <item>
+      <item row="4" column="0" colspan="2">
        <widget class="QTextEdit" name="TextEdit_AllTheEntities">
         <property name="maximumSize">
          <size>
@@ -97,7 +104,11 @@
       <item>
        <layout class="QGridLayout" name="gridLayout">
         <item row="1" column="0">
-         <widget class="QSpinBox" name="SpinBox_DoorX"/>
+         <widget class="QSpinBox" name="SpinBox_DoorX">
+          <property name="maximum">
+           <number>255</number>
+          </property>
+         </widget>
         </item>
         <item row="2" column="1">
          <widget class="QLabel" name="Label_DoorHeight">
@@ -120,7 +131,11 @@
          </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QSpinBox" name="SpinBox_DoorY"/>
+         <widget class="QSpinBox" name="SpinBox_DoorY">
+          <property name="maximum">
+           <number>255</number>
+          </property>
+         </widget>
         </item>
         <item row="0" column="0">
          <widget class="QLabel" name="Label_x1">
@@ -147,12 +162,18 @@
           <property name="minimum">
            <number>1</number>
           </property>
+          <property name="maximum">
+           <number>256</number>
+          </property>
          </widget>
         </item>
         <item row="3" column="1">
          <widget class="QSpinBox" name="SpinBox_DoorHeight">
           <property name="minimum">
            <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>256</number>
           </property>
          </widget>
         </item>

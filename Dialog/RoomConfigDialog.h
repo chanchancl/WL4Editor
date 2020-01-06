@@ -3,18 +3,18 @@
 
 #include <QDialog>
 
-#include <QGraphicsScene>
-#include <QPixmap>
 #include <QGraphicsPixmapItem>
-#include <QScrollBar>
+#include <QGraphicsScene>
 #include <QLabel>
+#include <QPixmap>
+#include <QScrollBar>
 
-#include "WL4Constants.h"
-#include "ROMUtils.h"
 #include "LevelComponents/Layer.h"
-#include "LevelComponents/Tileset.h"
 #include "LevelComponents/Room.h"
+#include "LevelComponents/Tileset.h"
+#include "ROMUtils.h"
 #include "RoomPreviewGraphicsView.h"
+#include "WL4Constants.h"
 
 namespace DialogParams
 {
@@ -32,27 +32,27 @@ namespace DialogParams
         bool BackgroundLayerEnable;
         bool BackgroundLayerAutoScrollEnable;
         int BackgroundLayerDataPtr;
+        unsigned short *LayerData[3];
 
         // Default constructor
-        RoomConfigParams()
-        {
-            memset(this, 0, sizeof(struct RoomConfigParams));
-        }
+        RoomConfigParams() { memset(this, 0, sizeof(struct RoomConfigParams)); }
 
         // Construct this param struct using a Room object
         RoomConfigParams(LevelComponents::Room *room) :
-            CurrentTilesetIndex(room->GetTilesetID()),
-            Layer0Enable(room->GetLayer0MappingParam() != 0),
-            Layer0Alpha(room->IsLayer0ColorBlendingEnable()),
-            LayerPriorityAndAlphaAttr(room->GetLayerEffectsParam()),
-            Layer0MappingTypeParam(room->GetLayer0MappingParam()),
-            RoomWidth(room->GetWidth()),
-            RoomHeight(room->GetHeight()),
-            Layer2Enable(room->IsLayer2Enabled()),
-            Layer0DataPtr((room->GetLayer0MappingParam() & 0x20) ? room->GetLayerDataPtr(0) : 0),
-            BackgroundLayerEnable(room->IsBGLayerEnabled())
+                CurrentTilesetIndex(room->GetTilesetID()), Layer0Enable(room->GetLayer0MappingParam() != 0),
+                Layer0Alpha(room->IsLayer0ColorBlendingEnabled()),
+                LayerPriorityAndAlphaAttr(room->GetLayerEffectsParam()),
+                Layer0MappingTypeParam(room->GetLayer0MappingParam()), RoomWidth(room->GetWidth()),
+                RoomHeight(room->GetHeight()), Layer2Enable(room->IsLayer2Enabled()),
+                Layer0DataPtr((room->GetLayer0MappingParam() & 0x20) ? room->GetLayerDataPtr(0) : 0),
+                BackgroundLayerEnable(room->IsBGLayerEnabled())
         {
-            if(BackgroundLayerEnable)
+            for (int i = 0; i < 3; i++)
+            {
+                // it is no needed to copy from other.
+                LayerData[i] = nullptr;
+            }
+            if (BackgroundLayerEnable)
             {
                 BackgroundLayerDataPtr = room->GetLayerDataPtr(3);
                 BackgroundLayerAutoScrollEnable = room->IsBGLayerAutoScrollEnabled();
@@ -63,11 +63,21 @@ namespace DialogParams
                 BackgroundLayerAutoScrollEnable = false;
             }
         }
-    };
-}
 
-namespace Ui {
-class RoomConfigDialog;
+        ~RoomConfigParams()
+        {
+            // new and delete by myself.
+            for (int i = 0; i < 3; i++)
+            {
+                if (LayerData[i]) delete[] LayerData[i];
+            }
+        }
+    };
+} // namespace DialogParams
+
+namespace Ui
+{
+    class RoomConfigDialog;
 }
 
 class RoomConfigDialog : public QDialog
@@ -89,6 +99,8 @@ private slots:
     void on_ComboBox_BGLayerPicker_currentIndexChanged(int index);
     void on_ComboBox_Layer0Picker_currentIndexChanged(int index);
     void on_ComboBox_LayerPriority_currentIndexChanged(int index);
+    void on_SpinBox_RoomWidth_valueChanged(int arg1);
+    void on_SpinBox_RoomHeight_valueChanged(int arg1);
 
 private:
     bool ComboBoxInitialized = false;
@@ -99,6 +111,7 @@ private:
     LevelComponents::Tileset *currentTileset = nullptr;
 
     // Enumeration of the available tilesets
+    // clang-format off
     static constexpr const char *TilesetNamesSetData[0x5C] =
     {
         "00  Debug room",
@@ -112,14 +125,14 @@ private:
         "08  Factory",
         "09  Wildflower Underground",
         "0A  Wildflower WaterPlace",
-        "0B  Underwater",
+        "0B  Wildflower Sunflower",
         "0C  Toy Block Tower",
         "0D  Toy Block Tower",
         "0E  Toy Block Tower",
         "0F  Doodle woods",
         "10  Dominoes",
         "11  Hall of Hieroglyphs",
-        "12  Haunte House",
+        "12  Haunted House",
         "13  Crescent Moon Village outside",
         "14  Drain",
         "15  Arabian outside",
@@ -142,7 +155,7 @@ private:
         "26  Jungle",
         "27  40 Below Fridge",
         "28  Jungle",
-        "29  Jungle caves",
+        "29  Cractus",
         "2A  Hotel",
         "2B  Hotel",
         "2C  Hotel",
@@ -167,20 +180,20 @@ private:
         "3F  Factory",
         "40  Factory",
         "41  Arabian",
-        "42  Boss room",
+        "42  Spoiled Rotten",
         "43  Boss corridor",
-        "44  Boss room",
+        "44  Aerodent",
         "45  Frozen lava level",
         "46  Lava level",
         "47  Hall of Hieroglyphs",
-        "48  Boss room",
-        "49  Boss room",
+        "48  Catbat",
+        "49  Cuckoo Condor",
         "4A  Boss corridor",
         "4B  Boss corridor",
         "4C  Boss corridor",
         "4D  Boss corridor",
         "4E  Boss corridor",
-        "4F  Boss room (Diva)",
+        "4F  Golden Diva",
         "50  Hall of Hieroglyphs",
         "51  Jungle",
         "52  Wildflower",
@@ -191,7 +204,7 @@ private:
         "57  Pinball",
         "58  Bonus room",
         "59  Bonus room",
-        "5A  Final level",
+        "5A  Golden Passage",
         "5B  The Big Board end"
     };
 
@@ -228,7 +241,7 @@ private:
     };
 
     // Enumeration of the available BGs per tileset (RLE format)
-    static constexpr const int BGLayerdataPtrsData[166] =
+    static constexpr const unsigned int BGLayerdataPtrsData[166] =
     {
         0,                            // Tileset 0x00
         1, WL4Constants::BG_0x5FB2CC,
@@ -323,6 +336,7 @@ private:
         0,
         0
     };
+    // clang-format on
 };
 
 #endif // ROOMCONFIGDIALOG_H

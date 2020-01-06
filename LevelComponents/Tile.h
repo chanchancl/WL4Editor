@@ -1,9 +1,9 @@
 #ifndef TILE_H
 #define TILE_H
 
-#include <QImage>
+#include <QPainter>
 
-#define ROT(X) (((X)<<13)|((X)>>19))
+#define ROT(X) (((X) << 13) | ((X) >> 19))
 
 namespace LevelComponents
 {
@@ -17,8 +17,10 @@ namespace LevelComponents
     {
     private:
         enum TileType Type;
+
     protected:
-        Tile(enum TileType _type) : Type(_type) { }
+        Tile(enum TileType _type) : Type(_type) {}
+
     public:
         virtual void DrawTile(QPixmap *layerPixmap, int x, int y) = 0;
         virtual ~Tile() {}
@@ -29,6 +31,8 @@ namespace LevelComponents
     public:
         QImageW(int W, int H, QImage::Format F) : QImage(W, H, F) {}
         QImageW(const QImageW &img) : QImage(img) {}
+        QImageW(QImage img) : QImage(img) {}
+        ~QImageW() {}
 
         /// <summary>
         /// Inline equality comparison functionality to provide O(1) performance for QHash
@@ -43,24 +47,24 @@ namespace LevelComponents
         {
             QVector<QRgb> pal1 = colorTable();
             QVector<QRgb> pal2 = other.colorTable();
-            if(pal1.size() != pal2.size())
+            if (pal1.size() != pal2.size())
             {
                 return false;
             }
-            for(int i = 0; i < pal1.size(); ++i)
+            for (int i = 0; i < pal1.size(); ++i)
             {
-                if(pal1[i] != pal2[i])
+                if (pal1[i] != pal2[i])
                 {
                     return false;
                 }
             }
             int size1 = width() * height();
             int size2 = other.width() * other.height();
-            if(size1 != size2)
+            if (size1 != size2)
             {
                 return false;
             }
-            QImageW *ptr = (QImageW*) &other;
+            QImageW *ptr = (QImageW *) &other;
             return !memcmp(data_ptr(), ptr->data_ptr(), size1);
         }
 
@@ -78,13 +82,13 @@ namespace LevelComponents
         /// </returns>
         inline uint qHash(const QImageW *img, uint seed)
         {
-            for(QRgb rgb : img->colorTable())
+            for (QRgb rgb : img->colorTable())
             {
-                seed = ROT(seed ^ (uint)rgb);
+                seed = ROT(seed ^ (uint) rgb);
             }
             const int bytes = img->width() * img->height() * img->depth() / 32;
-            unsigned int *data = (unsigned int*) img->constBits();
-            for(int i = 0; i < bytes; ++i)
+            unsigned int *data = (unsigned int *) img->constBits();
+            for (int i = 0; i < bytes; ++i)
             {
                 seed = ROT(seed ^ data[i]);
             }
@@ -96,14 +100,14 @@ namespace LevelComponents
     {
     private:
         Tile8x8(QVector<QRgb> *_palettes);
-        QImageW *ImageData;
         QVector<QRgb> *palettes;
+        QImageW *ImageData;
         int paletteIndex = 0;
         bool FlipX = false;
         bool FlipY = false;
 
         static QImageW *GetCachedImageData(QImageW *image);
-        static QHash<QImageW*, int> ImageDataCache;
+        static QHash<QImageW *, int> ImageDataCache;
         static void DeleteCachedImageData(QImageW *image);
 
     public:
@@ -123,11 +127,11 @@ namespace LevelComponents
         Tile8x8 *TileData[4];
 
     public:
-        TileMap16() : Tile(TileTypeMap16) { }
+        TileMap16() : Tile(TileTypeMap16) {}
         TileMap16(Tile8x8 *t0, Tile8x8 *t1, Tile8x8 *t2, Tile8x8 *t3);
         void DrawTile(QPixmap *layerPixmap, int x, int y);
         ~TileMap16();
     };
-}
+} // namespace LevelComponents
 
 #endif // TILE_H

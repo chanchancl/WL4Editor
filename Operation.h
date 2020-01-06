@@ -1,12 +1,14 @@
 #ifndef OPERATION_H
 #define OPERATION_H
 
+#include "Dialog/RoomConfigDialog.h"
 #include "LevelComponents/Tile.h"
 
 // Enumerate the type of operations that can be performed and undone
 enum OperationType
 {
-    ChangeTileOperation
+    ChangeTileOperation,
+    ChangeRoomConfigOperation
 };
 
 // The parameters specific to a tile change operation
@@ -38,15 +40,33 @@ struct OperationParams
 {
     // Fields
     enum OperationType type;
-    std::vector<struct TileChangeParams*> tileChangeParams;
+    std::vector<struct TileChangeParams *> tileChangeParams;
+    DialogParams::RoomConfigParams *lastRoomConfigParams;
+    DialogParams::RoomConfigParams *newRoomConfigParams;
+    bool tileChange;
+    bool roomConfigChange;
+
+    OperationParams() :
+            lastRoomConfigParams(nullptr), newRoomConfigParams(nullptr), tileChange(false), roomConfigChange(false)
+    {}
 
     // Clean up the struct when it is deconstructed
     ~OperationParams()
     {
-        for(unsigned int i = 0; i < tileChangeParams.size(); ++i)
+        if (tileChange)
         {
-            struct TileChangeParams *p = tileChangeParams[i];
-            delete p;
+            for (unsigned int i = 0; i < tileChangeParams.size(); ++i)
+            {
+                struct TileChangeParams *p = tileChangeParams[i];
+                delete p;
+            }
+        }
+        if (roomConfigChange)
+        {
+            if (lastRoomConfigParams)
+                delete lastRoomConfigParams;
+            if (newRoomConfigParams)
+                delete newRoomConfigParams;
         }
     }
 };

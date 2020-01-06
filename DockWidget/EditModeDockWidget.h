@@ -1,18 +1,19 @@
 #ifndef EDITMODEDOCKWIDGET_H
 #define EDITMODEDOCKWIDGET_H
 
-#include <QDockWidget>
 #include <QAbstractButton>
+#include <QDockWidget>
 
-namespace Ui {
+namespace Ui
+{
     class EditModeDockWidget;
 
     // Enumeration of the edit modes supported by the main window
     enum EditMode
     {
-        LayerEditMode  = 0,
+        LayerEditMode = 0,
         EntityEditMode = 1,
-        DoorEditMode   = 2,
+        DoorEditMode = 2,
         CameraEditMode = 3
     };
 
@@ -27,8 +28,10 @@ namespace Ui {
         bool cameraAreasEnabled = true;
         bool alphaBlendingEnabled = true;
         int seleteddifficulty = 0;
+        bool entitiesboxesDisabled = false;
+        bool hiddencoinsEnabled = false;
     };
-}
+} // namespace Ui
 
 class EditModeDockWidget : public QDockWidget
 {
@@ -38,19 +41,21 @@ private:
     Ui::EditModeDockWidget *ui;
 
     // Internal structures used to quickly obtain the selected options as a struct
-    std::map<QAbstractButton*, enum Ui::EditMode> modeEnums;
-    std::map<QAbstractButton*, int> layerIndices;
-    std::map<QAbstractButton*, int> difficultyIndices;
+    std::map<QAbstractButton *, enum Ui::EditMode> modeEnums;
+    std::map<QAbstractButton *, int> layerIndices;
+    std::map<QAbstractButton *, int> difficultyIndices;
     QButtonGroup *modeGroup;
     QButtonGroup *layerGroup;
     QButtonGroup *difficultyGroup;
 
 public:
-    explicit EditModeDockWidget(QWidget *parent = 0);    
+    explicit EditModeDockWidget(QWidget *parent = 0);
     struct Ui::EditModeParams GetEditModeParams();
     ~EditModeDockWidget();
     void SetLayersCheckBoxEnabled(int index, bool usable);
+    void SetDifficultyRadioBox(int modeid);
     bool *GetLayersVisibilityArray();
+    void UncheckHiddencoinsViewCheckbox();
 
 private slots:
     void on_CheckBox_Layer0View_stateChanged(int arg1);
@@ -62,6 +67,13 @@ private slots:
     void on_CheckBox_CameraView_stateChanged(int arg1);
     void on_CheckBox_AlphaView_stateChanged(int arg1);
     void on_RadioButton_DoorMode_toggled(bool checked);
+    void on_RadioButton_NMode_toggled(bool checked);
+    void on_RadioButton_HMode_toggled(bool checked);
+    void on_RadioButton_SHMode_toggled(bool checked);
+    void on_RadioButton_LayerMode_toggled(bool checked);
+    void on_RadioButton_EntityMode_toggled(bool checked);
+    void on_RadioButton_CameraMode_toggled(bool checked);
+    void on_CheckBox_hiddencoinsView_stateChanged(int arg1);
 };
 
 #endif // EDITMODEDOCKWIDGET_H

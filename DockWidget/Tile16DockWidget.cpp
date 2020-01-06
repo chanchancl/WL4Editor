@@ -13,12 +13,10 @@
 /// <param name="parent">
 /// The parent QWidget.
 /// </param>
-Tile16DockWidget::Tile16DockWidget(QWidget *parent) :
-    QDockWidget(parent),
-    ui(new Ui::Tile16DockWidget)
+Tile16DockWidget::Tile16DockWidget(QWidget *parent) : QDockWidget(parent), ui(new Ui::Tile16DockWidget)
 {
     ui->setupUi(this);
-    int scalerate = ui->graphicsView->width() / (16 * 8 * 2);
+    scalerate = ui->graphicsView->width() / (16 * 8 * 2);
     ui->graphicsView->scale(scalerate, scalerate);
     ui->graphicsView->SetDockWidget(this);
 
@@ -34,7 +32,20 @@ Tile16DockWidget::Tile16DockWidget(QWidget *parent) :
 Tile16DockWidget::~Tile16DockWidget()
 {
     delete ui;
+    if (Tile16MAPScene)
+    {
+        delete Tile16MAPScene;
+    }
+    if (SelectedTileset)
+    {
+        delete SelectedTileset;
+    }
 }
+
+/// <summary>
+/// This function will be triggered when the dock widget get focus.
+/// </summary>
+void Tile16DockWidget::FocusInEvent(QFocusEvent *e) { SetSelectedTile(0, true); }
 
 /// <summary>
 /// Set the tileset for the dock widget.
@@ -50,8 +61,14 @@ Tile16DockWidget::~Tile16DockWidget()
 int Tile16DockWidget::SetTileset(int _tilesetIndex)
 {
     // Clean up heap objects from previous invocations
-    if(SelectedTileset) { delete SelectedTileset; }
-    if(Tile16MAPScene) { delete Tile16MAPScene; }
+    if (SelectedTileset)
+    {
+        delete SelectedTileset;
+    }
+    if (Tile16MAPScene)
+    {
+        delete Tile16MAPScene;
+    }
 
     // Set up tileset
     int _tilesetPtr = WL4Constants::TilesetDataTable + _tilesetIndex * 36;
@@ -73,8 +90,7 @@ int Tile16DockWidget::SetTileset(int _tilesetIndex)
     ui->graphicsView->setAlignment(Qt::AlignTop | Qt::AlignLeft);
 
     // Re-initialize other settings
-    SelectedTile = (unsigned short) 0xFFFF;
-    SetTileInfoText(QString()); // clear tile info text
+    SetSelectedTile(0, true);
 
     return 0;
 }
@@ -85,10 +101,7 @@ int Tile16DockWidget::SetTileset(int _tilesetIndex)
 /// <param name="str">
 /// The string to display in the text box.
 /// </param>
-void Tile16DockWidget::SetTileInfoText(QString str)
-{
-    ui->tileInfoTextBox->setText(str);
-}
+void Tile16DockWidget::SetTileInfoText(QString str) { ui->tileInfoTextBox->setText(str); }
 
 /// <summary>
 /// Set the selected tile index for the dock widget, and update the position of the highlight square.
@@ -99,11 +112,25 @@ void Tile16DockWidget::SetTileInfoText(QString str)
 /// <param name="tile">
 /// The map16 tile index that was selected in the graphics view.
 /// </param>
-void Tile16DockWidget::SetSelectedTile(unsigned short tile)
+void Tile16DockWidget::SetSelectedTile(unsigned short tile, bool resetscrollbar)
 {
+    // Paint red Box to show selected Tile16
     int X = tile & 7;
     int Y = tile >> 3;
     SelectionBox->setPos(X * 16, Y * 16);
     SelectionBox->setVisible(true);
     SelectedTile = tile;
+
+    // Get the event information about the selected tile
+    unsigned short eventIndex = SelectedTileset->Map16EventTable[tile];
+    int tmpTerrainTypeID = SelectedTileset->Map16TerrainTypeIDTable[tile];
+
+    // Print information about the tile to the user
+    QString infoText;
+    infoText.sprintf("Tile ID: %d\nEvent ID: 0x%04X\nTerrain type ID: %d", tile, eventIndex, tmpTerrainTypeID);
+    SetTileInfoText(infoText);
+
+    // Set vertical scrollbar of braphicview
+    if (resetscrollbar)
+        ui->graphicsView->verticalScrollBar()->setValue(scalerate * 16 * (tile / 8));
 }

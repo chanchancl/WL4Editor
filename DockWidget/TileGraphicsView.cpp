@@ -1,8 +1,8 @@
 #include "TileGraphicsView.h"
 #include "LevelComponents/Tileset.h"
 
-#include <QScrollBar>
 #include <QMouseEvent>
+#include <QScrollBar>
 #include <QTextStream>
 
 static bool initialized = false; // Used to allow the vertical scrollbar to initialize to the top once.
@@ -23,23 +23,14 @@ void TileGraphicsView::mousePressEvent(QMouseEvent *event)
     // Get the ID of the tile that was clicked
     int X = event->x() + horizontalScrollBar()->sliderPosition();
     int Y = event->y() + verticalScrollBar()->sliderPosition();
-    if(X > 32 * 8 || Y > 32 * 0x60) return;
+    if (X > 32 * 8 || Y > 32 * 0x60)
+        return;
     int tileX = X / 32;
     int tileY = Y / 32;
     int tileID = tileX + tileY * 8;
 
-    // Get the event information about the selected tile
-    LevelComponents::Tileset *Selectedtileset = Map16DockWidget->GetSelectedTileset();
-    unsigned short eventIndex = Selectedtileset->Map16EventTable[tileID];
-    int tmpWarioAnimationSlotID = (int) Selectedtileset->Map16WarioAnimationSlotIDTable[tileID];
-
-    // Print information about the tile to the user
-    QString infoText;
-    infoText.sprintf("Tile ID: %d\nEvent ID: 0x%04X\nWario Animation Slot ID: %d", tileID, eventIndex, tmpWarioAnimationSlotID);
-    Map16DockWidget->SetTileInfoText(infoText);
-
     // Set the selected tile location for the graphics view
-    Map16DockWidget->SetSelectedTile((unsigned short) tileID);
+    Map16DockWidget->SetSelectedTile((unsigned short) tileID, false);
 }
 
 /// <summary>
@@ -54,7 +45,7 @@ void TileGraphicsView::mousePressEvent(QMouseEvent *event)
 void TileGraphicsView::showEvent(QShowEvent *event)
 {
     QGraphicsView::showEvent(event);
-    if(!initialized)
+    if (!initialized)
     {
         initialized = true;
         verticalScrollBar()->setValue(0);

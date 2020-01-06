@@ -4,7 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui
+QT += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -25,8 +25,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG += c++11 strict_c++
 
 SOURCES += \
-        main.cpp \
-        WL4EditorWindow.cpp \
+    main.cpp \
+    WL4EditorWindow.cpp \
     LevelComponents/Level.cpp \
     LevelComponents/Room.cpp \
     LevelComponents/Layer.cpp \
@@ -44,12 +44,15 @@ SOURCES += \
     DockWidget/EditModeDockWidget.cpp \
     Dialog/RoomConfigDialog.cpp \
     Dialog/RoomPreviewGraphicsView.cpp \
-    Dialog/EntityFilterTableView.cpp \
     Dialog/DoorConfigDialog.cpp \
-    LevelComponents/Entity.cpp
+    LevelComponents/Entity.cpp \
+    DockWidget/EntitySetDockWidget.cpp \
+    Compress.cpp \
+    DockWidget/CameraControlDockWidget.cpp \
+    SettingsUtils.cpp
 
 HEADERS += \
-        WL4EditorWindow.h \
+    WL4EditorWindow.h \
     LevelComponents/Level.h \
     LevelComponents/Room.h \
     LevelComponents/Layer.h \
@@ -68,15 +71,21 @@ HEADERS += \
     Operation.h \
     Dialog/RoomConfigDialog.h \
     Dialog/RoomPreviewGraphicsView.h \
-    Dialog/EntityFilterTableView.h \
     Dialog/DoorConfigDialog.h \
-    LevelComponents/Entity.h
+    LevelComponents/Entity.h \
+    DockWidget/EntitySetDockWidget.h \
+    Compress.h \
+    DockWidget/CameraControlDockWidget.h \
+    WL4Application.h \
+    SettingsUtils.h
 
 FORMS += \
-        WL4EditorWindow.ui \
+    WL4EditorWindow.ui \
     Dialog/ChooseLevelDialog.ui \
     DockWidget/Tile16DockWidget.ui \
     Dialog/LevelConfigDialog.ui \
     DockWidget/EditModeDockWidget.ui \
     Dialog/RoomConfigDialog.ui \
-    Dialog/DoorConfigDialog.ui
+    Dialog/DoorConfigDialog.ui \
+    DockWidget/EntitySetDockWidget.ui \
+    DockWidget/CameraControlDockWidget.ui

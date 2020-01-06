@@ -6,8 +6,8 @@
 extern WL4EditorWindow *singleton;
 
 // Globals used by the undo system
-static std::deque<struct OperationParams*> operationHistory;
-static unsigned int operationIndex;
+static std::deque<struct OperationParams *> operationHistory[16];
+static unsigned int operationIndex[16];
 
 /// <summary>
 /// Perform an operation based on its parameters.
@@ -20,20 +20,29 @@ static unsigned int operationIndex;
 /// </param>
 static void PerformOperation(struct OperationParams *operation)
 {
-    switch(operation->type)
+    LevelComponents::Room *room;
+    if (operation->tileChange)
     {
-    case ChangeTileOperation:
-        LevelComponents::Room *room = singleton->GetCurrentRoom();
-        for(auto iter = operation->tileChangeParams.begin(); iter != operation->tileChangeParams.end(); ++iter)
+        room = singleton->GetCurrentRoom();
+        for (auto iter = operation->tileChangeParams.begin(); iter != operation->tileChangeParams.end(); ++iter)
         {
             struct TileChangeParams *tcp = *iter;
             LevelComponents::Layer *layer = room->GetLayer(tcp->targetLayer);
-            int index = tcp->tileX + tcp->tileY * room->GetWidth();
+            unsigned int index = tcp->tileX + tcp->tileY * room->GetWidth();
             layer->GetLayerData()[index] = tcp->newTile;
             // Re-render the tile
             singleton->RenderScreenTileChange(tcp->tileX, tcp->tileY, tcp->newTile, tcp->targetLayer);
         }
-        break;
+    }
+    if (operation->roomConfigChange)
+    {
+        // change the width and height for all layers
+        singleton->RoomConfigReset(operation->lastRoomConfigParams, operation->newRoomConfigParams);
+        singleton->RenderScreenFull();
+        singleton->SetEditModeDockWidgetLayerEditability();
+        singleton->SetEditModeWidgetDifficultyRadioBox(1);
+        singleton->ResetEntitySetDockWidget();
+        singleton->SetUnsavedChanges(true);
     }
 }
 
@@ -48,20 +57,29 @@ static void PerformOperation(struct OperationParams *operation)
 /// </param>
 static void BackTrackOperation(struct OperationParams *operation)
 {
-    switch(operation->type)
+    LevelComponents::Room *room;
+    if (operation->tileChange)
     {
-    case ChangeTileOperation:
-        LevelComponents::Room *room = singleton->GetCurrentRoom();
-        for(auto iter = operation->tileChangeParams.begin(); iter != operation->tileChangeParams.end(); ++iter)
+        room = singleton->GetCurrentRoom();
+        for (auto iter = operation->tileChangeParams.begin(); iter != operation->tileChangeParams.end(); ++iter)
         {
             struct TileChangeParams *tcp = *iter;
             LevelComponents::Layer *layer = room->GetLayer(tcp->targetLayer);
-            int index = tcp->tileX + tcp->tileY * room->GetWidth();
+            unsigned int index = tcp->tileX + tcp->tileY * room->GetWidth();
             layer->GetLayerData()[index] = tcp->oldTile;
             // Re-render the tile
             singleton->RenderScreenTileChange(tcp->tileX, tcp->tileY, tcp->oldTile, tcp->targetLayer);
         }
-        break;
+    }
+    if (operation->roomConfigChange)
+    {
+        // new to last
+        singleton->RoomConfigReset(operation->newRoomConfigParams, operation->lastRoomConfigParams);
+        singleton->RenderScreenFull();
+        singleton->SetEditModeDockWidgetLayerEditability();
+        singleton->SetEditModeWidgetDifficultyRadioBox(1);
+        singleton->ResetEntitySetDockWidget();
+        singleton->SetUnsavedChanges(true);
     }
 }
 
@@ -73,14 +91,19 @@ static void BackTrackOperation(struct OperationParams *operation)
 /// </param>
 void ExecuteOperation(struct OperationParams *operation)
 {
+    int currentRoomNumber = singleton->GetCurrentRoom()->GetRoomID();
+
     PerformOperation(operation);
     // If we perform an action after a series of undo, then delete the "undone" operations from history
-    while(operationIndex)
+    while (operationIndex[currentRoomNumber])
     {
-        --operationIndex;
-        operationHistory.pop_front();
+        // Delete the front operation in the queue while decrementing the operation index until the index reaches 0
+        --operationIndex[currentRoomNumber];
+        struct OperationParams *frontOP = operationHistory[currentRoomNumber][0];
+        delete frontOP;
+        operationHistory[currentRoomNumber].pop_front();
     }
-    operationHistory.push_front(operation);
+    operationHistory[currentRoomNumber].push_front(operation);
     singleton->SetUnsavedChanges(true);
 }
 
@@ -94,15 +117,23 @@ void ExecuteOperation(struct OperationParams *operation)
 /// </remarks>
 void UndoOperation()
 {
+    int currentRoomNumber = singleton->GetCurrentRoom()->GetRoomID();
+
     // We cannot undo past the end of the deque
-    if(operationIndex < operationHistory.size())
+    if (operationIndex[currentRoomNumber] < operationHistory[currentRoomNumber].size())
     {
-        BackTrackOperation(operationHistory[operationIndex++]);
-        // If the entire operation history is undone, then there are no unsaved changes
-        if(operationIndex == operationHistory.size())
+        BackTrackOperation(operationHistory[currentRoomNumber][operationIndex[currentRoomNumber]++]);
+
+        // If the entire operation history is undone for all rooms, then there are no unsaved changes
+        for (unsigned int i = 0; i < sizeof(operationIndex) / sizeof(operationIndex[0]); ++i)
         {
-            singleton->SetUnsavedChanges(false);
+            if (operationIndex[currentRoomNumber] != operationHistory[currentRoomNumber].size())
+            {
+                return;
+            }
         }
+        // TODO uncomment this once all operations that change the level go through Operation.cpp
+        // singleton->SetUnsavedChanges(false);
     }
 }
 
@@ -116,10 +147,13 @@ void UndoOperation()
 /// </remarks>
 void RedoOperation()
 {
+    int currentRoomNumber = singleton->GetCurrentRoom()->GetRoomID();
+
     // We cannot redo past the front of the deque
-    if(operationIndex)
+    if (operationIndex[currentRoomNumber])
     {
-        PerformOperation(operationHistory[--operationIndex]);
+        PerformOperation(operationHistory[currentRoomNumber][--operationIndex[currentRoomNumber]]);
+
         // Performing a "redo" will make unsaved changes
         singleton->SetUnsavedChanges(true);
     }
@@ -133,6 +167,16 @@ void RedoOperation()
 /// </remarks>
 void ResetUndoHistory()
 {
-    operationHistory.clear();
-    operationIndex = 0;
+    for (unsigned int i = 0; i < sizeof(operationHistory) / sizeof(operationHistory[0]); ++i)
+    {
+        // Deconstruct the dynamically allocated operation structs within the history queue
+        for (unsigned int j = 0; j < operationHistory[i].size(); ++j)
+        {
+            delete operationHistory[i][j];
+        }
+        operationHistory[i].clear();
+    }
+
+    // Re-initialize all the operation indexes to zero
+    memset(operationIndex, 0, sizeof(operationIndex));
 }

@@ -1,20 +1,25 @@
 #ifndef WL4EDITORWINDOW_H
 #define WL4EDITORWINDOW_H
 
-#include <QMainWindow>
-#include <QLabel>
 #include <QButtonGroup>
+#include <QLabel>
+#include <QMainWindow>
 
-#include "LevelComponents/Level.h"
-#include "LevelComponents/Room.h"
+#include "SettingsUtils.h"
+
 #include "Dialog/ChooseLevelDialog.h"
-#include "DockWidget/Tile16DockWidget.h"
-#include "DockWidget/EditModeDockWidget.h"
+#include "Dialog/DoorConfigDialog.h"
 #include "Dialog/LevelConfigDialog.h"
 #include "Dialog/RoomConfigDialog.h"
-#include "Dialog/DoorConfigDialog.h"
+#include "DockWidget/CameraControlDockWidget.h"
+#include "DockWidget/EditModeDockWidget.h"
+#include "DockWidget/EntitySetDockWidget.h"
+#include "DockWidget/Tile16DockWidget.h"
+#include "LevelComponents/Level.h"
+#include "LevelComponents/Room.h"
 
-namespace Ui {
+namespace Ui
+{
     class WL4EditorWindow;
 }
 
@@ -27,11 +32,20 @@ private:
     QLabel *statusBarLabel;
     Tile16DockWidget *Tile16SelecterWidget;
     EditModeDockWidget *EditModeWidget;
+    EntitySetDockWidget *EntitySetWidget;
+    CameraControlDockWidget *CameraControlWidget;
     LevelComponents::Level *CurrentLevel = nullptr;
-    int selectedRoom = 0;
-    bool UnsavedChanges = false;
+    unsigned int selectedRoom = 0;
+    uint graphicViewScalerate = 2;
+    bool UnsavedChanges = false; // state check bool only be used when user try loading another ROM, another Level or
+                                 // close the editor without saving changes
     bool firstROMLoaded = false;
-    bool UnsavedChangesWarning();
+    void closeEvent(QCloseEvent *event);
+    bool notify(QObject *receiver, QEvent *event);
+    static bool SaveCurrentFile() { return ROMUtils::SaveFile(ROMUtils::ROMFilePath); }
+    bool SaveCurrentFileAs();
+    bool UnsavedChangesPrompt(QString str);
+    void CurrentRoomClearEverything();
 
 protected:
     void resizeEvent(QResizeEvent *event);
@@ -41,20 +55,40 @@ public:
     ~WL4EditorWindow();
     void RenderScreenFull();
     void RenderScreenVisibilityChange();
-    void RenderScreenElementsLayersUpdate(unsigned int DoorId);
+    void RenderScreenElementsLayersUpdate(unsigned int DoorId, int EntityId);
     void RenderScreenTileChange(int tileX, int tileY, unsigned short tileID, int LayerID);
     void SetStatusBarText(char *str);
     void LoadRoomUIUpdate();
     Tile16DockWidget *GetTile16DockWidgetPtr() { return Tile16SelecterWidget; }
     EditModeDockWidget *GetEditModeWidgetPtr() { return EditModeWidget; }
+    EntitySetDockWidget *GetEntitySetDockWidgetPtr() { return EntitySetWidget; }
     LevelComponents::Room *GetCurrentRoom() { return CurrentLevel->GetRooms()[selectedRoom]; }
     LevelComponents::Level *GetCurrentLevel() { return CurrentLevel; }
     void SetUnsavedChanges(bool newValue) { UnsavedChanges = newValue; }
     bool FirstROMIsLoaded() { return firstROMLoaded; }
     void OpenROM();
     void SetEditModeDockWidgetLayerEditability();
-    bool *GetLayersVisibilityArray();
-    void Graphicsview_UnselectDoor();
+    bool *GetLayersVisibilityArray() { return EditModeWidget->GetLayersVisibilityArray(); }
+    void Graphicsview_UnselectDoorAndEntity();
+    void RoomConfigReset(DialogParams::RoomConfigParams *currentroomconfig,
+                         DialogParams::RoomConfigParams *nextroomconfig);
+    void ShowEntitySetDockWidget() { EntitySetWidget->setVisible(true); }
+    void ShowTile16DockWidget() { Tile16SelecterWidget->setVisible(true); }
+    void ShowCameraControlDockWidget() { CameraControlWidget->setVisible(true); }
+    void HideCameraControlDockWidget() { CameraControlWidget->setVisible(false); }
+    void HideEntitySetDockWidget() { EntitySetWidget->setVisible(false); }
+    void HideTile16DockWidget() { Tile16SelecterWidget->setVisible(false); }
+    void ResetEntitySetDockWidget() { EntitySetWidget->ResetEntitySet(CurrentLevel->GetRooms()[selectedRoom]); }
+    void ResetCameraControlDockWidget()
+    {
+        CameraControlWidget->SetCameraControlInfo(CurrentLevel->GetRooms()[selectedRoom]);
+    }
+    void DeleteEntity(int EntityIndex) { CurrentLevel->GetRooms()[selectedRoom]->DeleteEntity(EntityIndex); }
+    void DeleteDoor(int globalDoorIndex);
+    void SetEditModeWidgetDifficultyRadioBox(int rd) { EditModeWidget->SetDifficultyRadioBox(rd); }
+
+    // Events
+    void keyPressEvent(QKeyEvent *event);
 
 private slots:
     void on_actionOpen_ROM_triggered();
@@ -65,6 +99,23 @@ private slots:
     void on_actionUndo_triggered();
     void on_actionRedo_triggered();
     void on_actionRoom_Config_triggered();
+    void on_actionNew_Door_triggered();
+    void on_actionSave_ROM_triggered();
+    void on_actionAbout_triggered();
+    void on_actionSave_As_triggered();
+    void on_action_swap_Layer_0_Layer_1_triggered();
+    void on_action_swap_Layer_1_Layer_2_triggered();
+    void on_action_swap_Layer_0_Layer_2_triggered();
+    void on_action_swap_Normal_Hard_triggered();
+    void on_action_swap_Hard_S_Hard_triggered();
+    void on_action_swap_Normal_S_Hard_triggered();
+    void on_action_clear_Layer_0_triggered();
+    void on_action_clear_Layer_1_triggered();
+    void on_action_clear_Layer_2_triggered();
+    void on_action_clear_Normal_triggered();
+    void on_action_clear_Hard_triggered();
+    void on_action_clear_S_Hard_triggered();
+    void on_actionSave_Room_s_graphic_triggered();
 };
 
 #endif // WL4EDITORWINDOW_H
